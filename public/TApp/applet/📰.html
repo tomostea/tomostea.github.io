@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>RSS</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@primer/css@19.0.0/dist/primer.css" />
+</head>
+
+<body>
+  <label class="btn" id="jsonbtn">
+    <input onchange="doRss()" type="file" id="json" accept=".json" class="d-none" />JSON
+  </label>
+  <button onclick="saveJson()" class="btn btn-primary">
+    DL
+  </button>
+  <button onclick="checkJson(1000000000)" class="btn btn-danger">
+    All
+  </button>
+  <div id="result"></div>
+  <script src="https://cdn.jsdelivr.net/npm/rss-parser@latest/dist/rss-parser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@latest/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@latest/dist/FileSaver.min.js"></script>
+  <!--[MozillaでのXML データアイランドの利用 - Archive of obsolete content | MDN](https://developer.mozilla.org/ja/docs/Archive/Misc_top_level/Using_XML_Data_Islands_in_Mozilla)-->
+  <script id="opml" type="text/xml">
+
+
+  </script>
+  <script>
+    let json_ = {};
+    let num = 0;
+    function saveJson() {
+      const blob = new Blob([JSON.stringify(json_)], {
+        type: "application/json",
+      });
+      const date = new Date();
+      saveAs(
+        blob,
+        `rss_${date
+          .getDate()
+          .toString()
+          .padStart(2, "0")}-${date
+            .getHours()
+            .toString()
+            .padStart(2, "0")}${date
+              .getMinutes()
+              .toString()
+              .padStart(2, "0")}.json`
+      );
+    }
+    function checkJson(sel_num) {
+      for (let j in json_) {
+        if (json_[j].n <= sel_num) {
+          json_[j].t = 0;
+          json_[j].p = 0;
+          json_[j].c = 0;
+          json_[j].s = 0;
+          json_[j].n = 0;
+          json_[j].r = 1;
+        }
+      }
+      presentJson();
+      scrollTo(0, 0);
+    }
+    function presentJson() {
+      const array_pre = [];
+      for (let j in json_) {
+        if (json_[j].r == 0) {
+          array_pre[json_[j].n] = { [j]: json_[j] };
+        }
+      }
+      let inHtml = "";
+      array_pre.forEach(a => {
+        const a_key = Object.keys(a)[0];
+        const childHtml = `<ul><li><details class="details-reset"><summary class="btn-link">${a[a_key].t}🔻</summary><div class="border p-3 mt-2"><button class="btn" onclick="checkJson(${a[a_key].n})">${a[a_key].p}&nbsp;-&nbsp;${a[a_key].s}</button><br><a href="${a_key}" target="_blank">⛓ ${a[a_key].c}</a></details></li></ul>`;
+        inHtml += childHtml;
+      });
+      document.querySelector("#result").innerHTML = inHtml;
+    }
+    async function rssParse(xml) {
+      const results = [];
+      const parser = new RSSParser();
+      // [rss-parser を使って Node.js で RSS を JSON に変換する - Corredor](http://neos21.hatenablog.com/entry/2018/12/16/080000)
+      await parser
+        .parseString(xml)
+        .then((feed) => {
+          feed.items.forEach(entry => {
+            num += 1;
+            const site_ = feed.title;
+            const link_ = encodeURI(entry.link.replace(/source=rss.+/g, ""));
+            const title_ = entry.title.slice(0, 24);
+            // [iamkun/dayjs: ⏰ Day.js 2kB immutable date-time library alternative to Moment.js with the same modern API](https://github.com/iamkun/dayjs)
+            const pubdate_ =
+              dayjs(entry.pubDate).format("MM/DD HH:mm") ||
+              "error : pubdate_";
+            const content_ =
+              entry.content
+                ?.replace(/<("[^"]*"|'[^']*'|[^'">])*>/g, "")
+                .slice(0, 140) || "err";
+            results.push({
+              [link_]: {
+                t: title_,
+                p: pubdate_,
+                c: content_,
+                s: site_,
+                r: 0,
+                n: num,
+              },
+            });
+          });
+        })
+        .catch((e) => console.error(e));
+      return results;
+    }
+    // [クライアントサイドJavaScriptでXML文書のDOMをパースする - Qiita](https://qiita.com/tom_konda/items/5e9824b38842615c9df1)
+    async function doRss() {
+      const urls = [];
+      const xmlSource = document.querySelector("#opml").textContent;
+      const parser = new DOMParser();
+      const outlines = parser
+        .parseFromString(xmlSource, "text/xml")
+        .querySelectorAll("outline[type='rss']");
+      for (let o of outlines) {
+        urls.push(o.getAttribute("xmlUrl"));
+      }
+      const jsReader = new FileReader();
+      jsReader.addEventListener("load", readJson, false);
+      jsReader.readAsText(document.querySelector("#json").files[0]);
+      async function readJson(e) {
+        json_ = Object.assign({}, JSON.parse(e.target.result));
+        const nums = [num];
+        for (let j in json_) {
+          nums.push(json_[j].n);
+        }
+        num = Math.max(...nums);
+        document
+          .querySelector("#jsonbtn")
+          .setAttribute(
+            "class",
+            "btn btn-outline"
+          );
+        // [Convert cURL command syntax to Python requests, Ansible URI, browser fetch, MATLAB, Node.js, R, PHP, Strest, Go, Dart, JSON, Elixir, and Rust code](https://curl.trillworks.com/#node-fetch)
+        const gasResult = await fetch(
+          "https://script.google.com/macros/s/AKfycbyidun34eo8cgf5mIskkgjVbC2pmgqSNldbRK7MEwkX0sWCuUxf/exec",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: JSON.stringify({ urls: urls }),
+            redirect: "follow",
+          }
+        ).catch((e) => alert(e));
+        document
+          .querySelector("#jsonbtn")
+          .setAttribute(
+            "class",
+            "btn btn-danger"
+          );
+        const gasJson = await gasResult.json().catch((e) => alert(e));
+        const results = gasJson.map((xml) => rssParse(xml));
+        const data_ = await Promise.all(results);
+        const new_ = data_.flat();
+        new_.forEach(n => {
+          const n_key = Object.keys(n)[0];
+          if (!json_[n_key]) {
+            json_[n_key] = n[n_key];
+          }
+        });
+        presentJson();
+        document
+          .querySelector("#jsonbtn")
+          .setAttribute(
+            "class",
+            "btn"
+          );
+      }
+    }
+  </script>
+</body>
+
+</html>

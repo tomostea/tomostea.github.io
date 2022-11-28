@@ -652,12 +652,9 @@ function clickDepth(evt) {
     } while (chunkNumber < 2 && newFileChunkAvailable);
     if (chunkNumber != 2) return false;
     var depthImage = buffer.slice(startPosition, lastPosition);
-    const a = document.createElement("a");
-    document.body.appendChild(a);
+    const a = document.getElementById("depth_result")
     a.href = "data:image/jpeg;base64," + btoa(depthImage);
-    console.log(a.href);
     a.download = "depth.jpeg";
-    a.click();
   };
   reader.readAsBinaryString(f);
 }

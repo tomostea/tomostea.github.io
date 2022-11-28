@@ -690,7 +690,7 @@ function clickSurround(evt) {
       "out.m4a"
     );
     const data = ffmpeg.FS("readFile", "out.m4a");
-    const result = document.getElementById("result");
+    const result = document.getElementById("surround_result");
     result.href = URL.createObjectURL(
       new Blob([data.buffer], { type: "audio/m4a" })
     );

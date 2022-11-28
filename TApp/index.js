@@ -661,3 +661,40 @@ function clickDepth(evt) {
   };
   reader.readAsBinaryString(f);
 }
+
+document.getElementById("surround_button").addEventListener("click", clickSurround);
+function clickSurround(evt) {
+  const { createFFmpeg, fetchFile } = FFmpeg;
+  const ffmpeg = createFFmpeg({ log: true });
+  const fl = document.getElementById("fl");
+  const fr = document.getElementById("fr");
+  const fc = document.getElementById("fc");
+  const lfe = document.getElementById("lfe");
+  const bl = document.getElementById("bl");
+  const br = document.getElementById("br");
+  const transcode = async () => {
+    const audios = [fl, fr, fc, lfe, bl, br];
+    await ffmpeg.load();
+    audios.forEach(async (audio) =>
+      ffmpeg.FS("writeFile", audio.files[0].name, await fetchFile(audio.files[0]))
+    );
+    const inputs = audios.map((audio) => ["-i", audio.files[0].name]).flat();
+    await ffmpeg.run(
+      ...inputs,
+      "-c:a",
+      "aac",
+      "-filter_complex",
+      "[0:a][1:a][2:a][3:a][4:a][5:a]join=inputs=6:channel_layout=5.1:map=0.0-FL|1.0-FR|2.0-FC|3.0-LFE|4.0-BL|5.0-BR[a]",
+      "-map",
+      "[a]",
+      "out.m4a"
+    );
+    const data = ffmpeg.FS("readFile", "out.m4a");
+    const result = document.getElementById("result");
+    result.href = URL.createObjectURL(
+      new Blob([data.buffer], { type: "audio/m4a" })
+    );
+    result.download = "out.m4a";
+  };
+  transcode();
+}
